@@ -2,7 +2,9 @@ import os
 import logging
 
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development').lower()
-SECRET_KEY = os.getenv('SECRET_KEY', 'portable-theatre-super-secret-key-2026')
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
+if len(SECRET_KEY) < 32 or SECRET_KEY.lower().startswith(("portable-theatre-", "change", "replace")):
+    raise ValueError("Set SECRET_KEY to a private random value of at least 32 characters before starting the server.")
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
 
@@ -49,5 +51,3 @@ def resolve_database_url():
 
 DATABASE_URL = resolve_database_url()
 
-if ENVIRONMENT == 'production' and SECRET_KEY == 'portable-theatre-super-secret-key-2026':
-    logging.warning('⚠️ SECURITY WARNING: Production environment is using default SECRET_KEY!')
