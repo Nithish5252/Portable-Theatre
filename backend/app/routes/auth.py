@@ -104,39 +104,9 @@ async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
         print("REGISTRATION EXCEPTION:", e)
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
-@router.post("/demo-admin", response_model=TokenResponse)
-async def demo_admin(db: AsyncSession = Depends(get_db)):
-    if not ENABLE_DEMO_ADMIN or ENVIRONMENT == "production":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Demo admin mode is disabled in production environment."
-        )
-    # Check existing admin user
-    result = await db.execute(select(User).where(User.username == "admin"))
-    user = result.scalars().first()
-    now = datetime.utcnow()
-    if not user:
-        user = User(
-            id=str(uuid.uuid4()),
-            username="admin",
-            email="admin@portabletheatre.io",
-            role="admin",
-            password_hash=get_password_hash("admin123"),
-            avatar_url="https://api.dicebear.com/7.x/bottts/svg?seed=admin",
-            is_active=True,
-            created_at=now,
-            last_active_at=now
-        )
-        db.add(user)
-    else:
-        user.last_active_at = now
-        user.is_active = True
-
-    await db.commit()
-    await db.refresh(user)
-
-    access_token = create_access_token({"sub": user.id})
-    return TokenResponse(access_token=access_token, user=UserResponse.model_validate(user))
+@router.post("/demo-admin")
+async def demo_admin():
+    raise HTTPException(status_code=403, detail="Demo admin login is disabled.")
 
 @router.post("/login", response_model=TokenResponse)
 async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
@@ -189,36 +159,3 @@ async def guest_login(guest_in: GuestLogin, db: AsyncSession = Depends(get_db)):
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-@router.delete("/reset-user/{username}")
-async def reset_user(username: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.username == username))
-    user = result.scalars().first()
-    if user:
-        await db.delete(user)
-        await db.commit()
-        return {"status": f"User {username} deleted successfully"}
-    return {"status": "User not found"}
-
-@router.post("/force-password")
-async def force_password(payload: dict, db: AsyncSession = Depends(get_db)):
-    username = payload.get("username", "Nithish52")
-    password = payload.get("password", "Nithish5252")
-    result = await db.execute(select(User).where((User.username == username) | (User.email == username)))
-    user = result.scalars().first()
-    if not user:
-        user = User(
-            id=str(uuid.uuid4()),
-            username=username,
-            email="nithishnithishkumar371@gmail.com",
-            role="user",
-            password_hash=get_password_hash(password),
-            avatar_url=f"https://api.dicebear.com/7.x/bottts/svg?seed={username}",
-            is_active=True,
-            created_at=datetime.utcnow(),
-            last_active_at=datetime.utcnow()
-        )
-        db.add(user)
-    else:
-        user.password_hash = get_password_hash(password)
-    await db.commit()
-    return {"status": f"Password for {username} set to {password}"}
